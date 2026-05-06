@@ -193,12 +193,13 @@ class SharePointGraph:
         return items
     
     def download_file(
-            self, *,
+            self, 
             origin_file_path: str,
+            *,
+            save_as: Literal['file', 'binary'],
             target_path: str | Path = "",
             file_name: str = "",
-            save_as: Literal['file', 'binary'] = 'file'
-        ) -> BytesIO:
+        ) -> BytesIO|str:
         """
         Faz o download de um arquivo do SharePoint.
 
@@ -250,7 +251,7 @@ class SharePointGraph:
                 f.write(response.content)
 
             print(f"O Arquivo '{origin_file_path}' foi baixado e salvo em '{target_path.__str__()}'")
-            return BytesIO()  # Retorna um BytesIO vazio para manter a assinatura de retorno
+            return target_path.__str__()  # Retorna o caminho do arquivo salvo
         elif save_as == 'binary':
             # Retorna o conteúdo em memória como BytesIO
             return BytesIO(response.content)
@@ -258,8 +259,9 @@ class SharePointGraph:
         raise ValueError("Valor inválido para 'save_as'. Use 'file' ou 'binary'.")
         
     def upload_file(
-        self, *,
+        self, 
         local_file_path: str | Path,
+        *,
         target_path: str | Path = ""
     ) -> bool:
         """
@@ -578,7 +580,7 @@ if __name__ == "__main__":
     )
     
     buffer = sp.download_file(
-        origin_file_path=r"RPA - Dados\Relatorio_Imobme_Financeiro\RecebimentosCompensados.json",
+        origin_file_path=r"RPA - Dados\Relatorio_Imobme_Financeiro\ControleEstoque.json",
         save_as='binary'
     )
     import pandas as pd
