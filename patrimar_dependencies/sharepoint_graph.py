@@ -164,7 +164,7 @@ class SharePointGraph:
         response = requests.get(url, headers=self.headers)
         return response.json()["value"]
     
-    def list_folder_items(self, folder_path: str, *, full_path: bool = False) -> list:
+    def list_folder_items(self, folder_path: str) -> list:
         """
         Lista os itens de uma pasta específica na biblioteca.
 
@@ -183,13 +183,12 @@ class SharePointGraph:
         response = requests.get(url, headers=self.headers)
         items = response.json()["value"]
 
-        if full_path:
-            # Enriquece cada item com o caminho completo relativo à raiz
-            _items = []
-            for item in items:
-                _items.append(item)
-                _items[-1]['full_path'] = f"{folder_path}/{item['name']}"
-            items = _items
+        # Enriquece cada item com o caminho completo relativo à raiz
+        _items = []
+        for item in items:
+            _items.append(item)
+            _items[-1]['full_path'] = f"{folder_path}/{item['name']}"
+        items = _items
 
         return items
     
