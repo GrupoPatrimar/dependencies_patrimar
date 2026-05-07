@@ -13,7 +13,7 @@ with open(path.join(here, 'requirements.txt'), 'r', encoding='utf-16') as requir
 
 setup(
     name='patrimar_dependencies',
-    version='2.19.4',
+    version='2.19.5',
     packages=find_packages(),
     install_requires=requirements,
     author='Renan Oliveira',

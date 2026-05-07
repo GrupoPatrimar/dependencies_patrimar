@@ -587,7 +587,7 @@ class SharePointGraph:
         
         url = f"{self.base_url}/drives/{self.get_drive_id()}/root:/{path.as_posix()}"
         response = requests.get(url, headers=self.headers)
-        response.raise_for_status()
+        #response.raise_for_status()
         
         if response.status_code == 200:
             return True
@@ -637,7 +637,7 @@ if __name__ == "__main__":
     # )
     # print(buffer)
     
-    x = sp.is_folder(r"RPA - Dados\Relatorio_Imobme_Financeiro")
+    x = sp.item_exists(r"RPA - Dados/Configs/Vcred/control_files.json")
     
     print(x)
     
