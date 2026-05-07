@@ -222,28 +222,37 @@ class SharePointGraph:
             NotADirectoryError: Se `target_path` existir mas não for um diretório.
             requests.HTTPError: Se o arquivo não for encontrado ou o acesso for negado.
         """
-        if save_as == 'file':
             # Define o diretório de destino (usa cwd se não informado)
-            if not target_path:
-                target_path = Path.cwd()
-            if isinstance(target_path, str):
-                target_path = Path(target_path)
-            # Cria o diretório de destino se não existir
-            if not target_path.exists():
-                os.makedirs(target_path)
-            elif not target_path.is_dir():
-                raise NotADirectoryError(f"'{target_path}' não é um diretório válido para salvar o arquivo.")
-
-            # Determina o nome final do arquivo no disco
-            if file_name:
-                target_path = target_path.joinpath(file_name)
-            else:
-                target_path = target_path.joinpath(Path(origin_file_path).name)
-
+        if not target_path:
+            target_path = Path.cwd()
+        if isinstance(target_path, str):
+            target_path = Path(target_path)
+            
         # Requisita o conteúdo binário do arquivo via Graph API
         url = f"{self.base_url}/drives/{self.get_drive_id()}/root:/{origin_file_path}:/content"
         response = requests.get(url, headers=self.headers)
         response.raise_for_status()
+            
+        if save_as == 'file':
+            # Cria o diretório de destino se não existir
+            if not target_path.exists():
+                print(f"📁 Criando diretório: {target_path.is_file()=}")
+                if target_path.suffix:
+                    target_path.parent.mkdir(exist_ok=True)
+                else:
+                    target_path.mkdir(exist_ok=True)
+                    
+
+            # Determina o nome final do arquivo no disco
+            if file_name:
+                if target_path.suffix:
+                    target_path = target_path.parent.joinpath(file_name)
+                else:
+                    target_path = target_path.joinpath(file_name)
+            else:
+                if not target_path.suffix:
+                    target_path = target_path.joinpath(Path(origin_file_path).name)
+
 
         if save_as == 'file':
             # Salva o conteúdo no arquivo local
@@ -570,6 +579,48 @@ class SharePointGraph:
     
     
 
+    def item_exists(self, path: str|Path) -> bool:
+        """Verifica se um arquivo/pasta existe no SharePoint"""
+        
+        if isinstance(path, str):
+            path = Path(path)
+        
+        url = f"{self.base_url}/drives/{self.get_drive_id()}/root:/{path.as_posix()}"
+        response = requests.get(url, headers=self.headers)
+        response.raise_for_status()
+        
+        if response.status_code == 200:
+            return True
+        elif response.status_code == 404:
+            return False
+        else:
+            raise requests.HTTPError(f"Erro ao verificar existência do item. Status: {response.status_code}, Detalhes: {response.text}")
+    
+    def get_item_metadata(self, path: str|Path):
+        """Obtém os metadados de um arquivo/pasta no SharePoint"""
+        
+        if isinstance(path, str):
+            path = Path(path)
+        
+        url = f"{self.base_url}/drives/{self.get_drive_id()}/root:/{path.as_posix()}"
+        response = requests.get(url, headers=self.headers)
+        response.raise_for_status()
+        
+        return response.json()
+    
+    def is_folder(self, path: str|Path) -> bool:
+        """Verifica se o item no caminho especificado é uma pasta"""
+        
+        metadata = self.get_item_metadata(path)
+        return "folder" in metadata
+    
+    def is_file(self, path: str|Path) -> bool:
+        """Verifica se o item no caminho especificado é um arquivo"""
+        
+        metadata = self.get_item_metadata(path)
+        return "file" in metadata
+    
+
 if __name__ == "__main__":
     from dotenv import load_dotenv; load_dotenv()
     
@@ -579,11 +630,14 @@ if __name__ == "__main__":
         client_secret=os.getenv("AZURE_CLIENT_SECRET",""),
     )
     
-    buffer = sp.download_file(
-        origin_file_path=r"RPA - Dados\Relatorio_Imobme_Financeiro\ControleEstoque.json",
-        save_as='binary'
-    )
-    import pandas as pd
-    print(
-            pd.read_json(buffer)
-    )
+    # buffer = sp.download_file(
+    #     origin_file_path=r"RPA - Dados\Relatorio_Imobme_Financeiro\ControleEstoque.json",
+    #     target_path=Path.cwd().joinpath("testando", "teste.json"),
+    #     save_as='file'
+    # )
+    # print(buffer)
+    
+    x = sp.is_folder(r"RPA - Dados\Relatorio_Imobme_Financeiro")
+    
+    print(x)
+    
