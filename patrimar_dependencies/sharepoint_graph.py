@@ -1,11 +1,12 @@
 import os
+from dotenv import load_dotenv; load_dotenv()
 import requests
 from pathlib import Path
 from typing import Literal, Union
 from io import BytesIO
 from datetime import datetime
 
-
+DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "t")
 
 class SharePointGraph:
     """
@@ -236,7 +237,7 @@ class SharePointGraph:
         if save_as == 'file':
             # Cria o diretório de destino se não existir
             if not target_path.exists():
-                print(f"📁 Criando diretório: {target_path.is_file()=}")
+                print(f"Criando diretório: {target_path.is_file()=}") if DEBUG else None
                 if target_path.suffix:
                     target_path.parent.mkdir(exist_ok=True)
                 else:
@@ -259,7 +260,7 @@ class SharePointGraph:
             with open(str(target_path), "wb") as f:
                 f.write(response.content)
 
-            print(f"O Arquivo '{origin_file_path}' foi baixado e salvo em '{target_path.__str__()}'")
+            print(f"O Arquivo '{origin_file_path}' foi baixado e salvo em '{target_path.__str__()}'") if DEBUG else None
             return target_path.__str__()  # Retorna o caminho do arquivo salvo
         elif save_as == 'binary':
             # Retorna o conteúdo em memória como BytesIO
@@ -315,7 +316,7 @@ class SharePointGraph:
             target_path = target_path.joinpath(local_file_path.name)
         
 
-        print(target_path)
+        print(target_path) if DEBUG else None
 
         # 1. Criar sessão de upload — necessário para envio em múltiplos chunks
         url = f"{self.base_url}/drives/{self.get_drive_id()}/root:/{target_path}:/createUploadSession"
@@ -343,10 +344,10 @@ class SharePointGraph:
                 response.raise_for_status()
 
                 progress = round((end + 1) / file_size * 100, 1)
-                print(f"📤 Progresso: {progress}%", end='\r')
+                print(f"Progresso: {progress}%", end='\r') if DEBUG else None
                 offset += len(chunk)
 
-        print("\n✅ Upload concluído!")
+        print("\nUpload concluído!") if DEBUG else None
         return True
         
         
@@ -396,7 +397,7 @@ class SharePointGraph:
         })
         response.raise_for_status()
 
-        print(f"📂 Pasta criada: {folder_path.name}")    
+        print(f"Pasta criada: {folder_path.name}") if DEBUG else None
         return True   
     
     def rename_item(self, *, item_path: str | Path, new_name: str) -> bool:
@@ -430,7 +431,7 @@ class SharePointGraph:
         }, json={"name": new_name})
         response.raise_for_status()
 
-        print(f"✅ Renomeado para: {response.json()['name']}")
+        print(f"Renomeado para: {response.json()['name']}") if DEBUG else None
         return True
     
     
@@ -462,7 +463,7 @@ class SharePointGraph:
         response.raise_for_status()
 
         # HTTP 204 (No Content) indica exclusão bem-sucedida
-        print(f"🗑️ Arquivo deletado! Status: {response.status_code}")
+        print(f"Arquivo deletado! Status: {response.status_code}") if DEBUG else None
         return True
     
     def move_item(self, *, item_path: str | Path, target_folder_path: str | Path) -> bool:
@@ -506,7 +507,7 @@ class SharePointGraph:
         })
         response.raise_for_status()
 
-        print("✅ Arquivo movido!")
+        print("Arquivo movido!") if DEBUG else None
         return True
     
     def copy_item(self, *, item_path: str | Path, target_folder_path: str | Path) -> bool:
@@ -571,10 +572,10 @@ class SharePointGraph:
 
         if response.status_code == 202:
             # HTTP 202 (Accepted) — cópia iniciada, processamento ocorre em segundo plano
-            print(f"✅ Cópia iniciada! Status: {response.status_code}")
+            print(f"Cópia iniciada! Status: {response.status_code}") if DEBUG else None
             return True
 
-        print(f"❌ Falha ao iniciar cópia. Status: {response.status_code}, Detalhes: {response.text}")
+        print(f"Falha ao iniciar cópia. Status: {response.status_code}, Detalhes: {response.text}") if DEBUG else None
         return False    
     
     
