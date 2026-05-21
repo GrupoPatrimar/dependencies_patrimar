@@ -7,6 +7,7 @@ import subprocess
 from time import sleep
 import traceback
 import re
+import os
 
 # Códigos de erro COM do SAP que indicam desconexão
 _SAP_COM_DISCONNECTED_CODES = {
@@ -244,7 +245,16 @@ class SAPManipulation():
                 for tentativa in range(3):
                     try:
                         if not self.__verificar_sap_aberto():
-                            subprocess.Popen(r"C:\Program Files (x86)\SAP\FrontEnd\SapGui\saplogon.exe")
+                            #C:\Program Files\SAP\FrontEnd\SAPGUI
+                            
+                            if os.path.exists(r'C:\Program Files\SAP\FrontEnd\SAPGUI\saplogon.exe'):
+                                subprocess.Popen(r"C:\Program Files\SAP\FrontEnd\SAPGUI\saplogon.exe")
+                                
+                            elif os.path.exists(r"C:\Program Files (x86)\SAP\FrontEnd\SapGui\saplogon.exe"):
+                                subprocess.Popen(r"C:\Program Files (x86)\SAP\FrontEnd\SapGui\saplogon.exe")
+                                
+                            else:
+                                raise Exception("Não foi possível encontrar o executável do SAP Logon. Verifique se o SAP está instalado corretamente.")
                             for _ in range(30):
                                 sleep(2)
                                 if self.__verificar_sap_aberto():
