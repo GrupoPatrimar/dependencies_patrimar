@@ -8,6 +8,9 @@ from time import sleep
 import traceback
 import re
 import os
+import threading
+import win32gui
+import win32con
 
 # Códigos de erro COM do SAP que indicam desconexão
 _SAP_COM_DISCONNECTED_CODES = {
@@ -49,6 +52,103 @@ class FindNewID:
             if not connection.Children(x).Id in self.__connections:
                 return x
         raise Exception("sessão nao encontrada!")
+
+
+class SapCrashDialogWatcher:
+    """Thread daemon que monitora e fecha dialogs de crash do SAP GUI automaticamente."""
+
+    _SAP_DIALOG_TITLES = (
+        "sap logon",
+        "sap gui",
+        "sap front end",
+        "sap gui for windows",
+    )
+
+    _CONFIRM_TEXTS = {"sim", "yes", "ok", "ja"}
+
+    def __init__(self, interval: float = 2.0) -> None:
+        self._interval = interval
+        self._stop_event = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        self._stop_event.clear()
+        self._thread = threading.Thread(target=self._run, daemon=True, name="SapCrashDialogWatcher")
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        if self._thread is not None:
+            self._thread.join(timeout=self._interval + 1)
+
+    def __enter__(self) -> "SapCrashDialogWatcher":
+        self.start()
+        return self
+
+    def __exit__(self, *args) -> None:
+        self.stop()
+
+    def _run(self) -> None:
+        while not self._stop_event.wait(timeout=self._interval):
+            try:
+                found_windows: list = []
+
+                def _enum_windows_cb(hwnd, _):
+                    try:
+                        if not win32gui.IsWindowVisible(hwnd):
+                            return True
+                        title = win32gui.GetWindowText(hwnd)
+                        if not title:
+                            return True
+                        title_lower = title.lower()
+                        if any(t in title_lower for t in SapCrashDialogWatcher._SAP_DIALOG_TITLES):
+                            found_windows.append(hwnd)
+                    except Exception:
+                        pass
+                    return True
+
+                win32gui.EnumWindows(_enum_windows_cb, None)
+
+                for hwnd in found_windows:
+                    try:
+                        confirm_buttons: list = []
+
+                        def _enum_children_cb(child_hwnd, _):
+                            try:
+                                cls = str(win32gui.GetClassName(child_hwnd)).lower()
+                                if "button" in cls:
+                                    text = win32gui.GetWindowText(child_hwnd).strip().lower().replace("&", "")
+                                    if text in SapCrashDialogWatcher._CONFIRM_TEXTS:
+                                        confirm_buttons.append(child_hwnd)
+                            except Exception:
+                                pass
+                            return True
+
+                        win32gui.EnumChildWindows(hwnd, _enum_children_cb, None)
+
+                        if confirm_buttons:
+                            target = confirm_buttons[0]
+                            try:
+                                win32gui.SetForegroundWindow(hwnd)
+                            except Exception:
+                                pass
+                            clicked = False
+                            try:
+                                win32gui.SendMessage(target, win32con.BM_CLICK, 0, 0)
+                                clicked = True
+                            except Exception:
+                                pass
+                            if not clicked:
+                                try:
+                                    win32gui.PostMessage(target, win32con.BM_CLICK, 0, 0)
+                                except Exception:
+                                    pass
+                            print(P("SapCrashDialogWatcher: dialog SAP detectado e fechado automaticamente.", color='yellow'))
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
 
 class SAPManipulation():
     @property
@@ -124,6 +224,10 @@ class SAPManipulation():
     
     def __del__(self):
         try:
+            self._crash_watcher.stop()
+        except Exception:
+            pass
+        try:
             self.fechar_sap(all=True)
         except:
             pass
@@ -153,6 +257,8 @@ class SAPManipulation():
         self.__password:str|None = password
         self.__ambiente:str|None = ambiente
         self.__new_connection:bool = new_conection
+        self._crash_watcher = SapCrashDialogWatcher()
+        self._crash_watcher.start()
          
     # Decorador para iniciar o SAP
     @staticmethod
