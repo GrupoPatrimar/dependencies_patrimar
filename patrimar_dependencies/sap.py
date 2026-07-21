@@ -17,6 +17,7 @@ _SAP_COM_DISCONNECTED_CODES = {
     -2147417848,  # O objeto chamado foi desconectado de seus clientes
     -2147352567,  # Falha de chamada COM genérica
     -2147221020,  # Sintaxe inválida / COM não inicializado
+    -2147023174,  # O servidor RPC não está disponível (SAP GUI caiu)
 }
 
 def _is_com_disconnect_error(error) -> bool:
